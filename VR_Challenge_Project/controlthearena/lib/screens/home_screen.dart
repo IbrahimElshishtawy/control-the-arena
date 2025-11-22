@@ -1,3 +1,4 @@
+import 'package:controlthearena/screens/game_dashboard_screen.dart';
 import 'package:flutter/material.dart';
 import '../services/game_socket_service.dart';
 
@@ -27,7 +28,9 @@ class _HomeScreenState extends State<HomeScreen> {
     socket.connect();
     socket.sendHandshake();
     setState(() {
-      logText = "Connecting...";
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const GameDashboardScreen()));
     });
   }
 
