@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/status.dart' as ws_status;
 
@@ -17,7 +18,9 @@ class GameSocketService {
 
     _channel = WebSocketChannel.connect(Uri.parse(AppConfig.wsHost));
 
-    print("Flutter Connected to Python WebSocket...");
+    if (kDebugMode) {
+      print("Flutter Connected to Python WebSocket...");
+    }
 
     _channel!.stream.listen((event) {
       try {
@@ -26,7 +29,9 @@ class GameSocketService {
           onMessage?.call(decoded);
         }
       } catch (e) {
-        print("WebSocket decode error: $e");
+        if (kDebugMode) {
+          print("WebSocket decode error: $e");
+        }
       }
     });
   }
@@ -48,7 +53,9 @@ class GameSocketService {
     if (_channel != null) {
       _channel!.sink.close(ws_status.goingAway);
       _channel = null;
-      print("WebSocket Disconnected.");
+      if (kDebugMode) {
+        print("WebSocket Disconnected.");
+      }
     }
   }
 }
