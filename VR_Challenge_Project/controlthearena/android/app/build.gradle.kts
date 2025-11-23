@@ -8,7 +8,7 @@ plugins {
 android {
     namespace = "com.example.controlthearena"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "27.1.12297006"
+    ndkVersion = "29.0.14206865"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
