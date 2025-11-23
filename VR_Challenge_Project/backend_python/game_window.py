@@ -25,7 +25,7 @@ def main():
     while running:
         delta = clock.tick(60) / 1000.0
 
-        # أحداث Pygame (لو عايز تقفل النافذة)
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -39,7 +39,7 @@ def main():
         # رسم اللاعب
         px = int(engine.state.player.x)
         py = ARENA_HEIGHT - int(engine.state.player.y) - 40
-        pygame.draw.rect(screen, PLAYER_COLOR, (px, py, 40, 40))
+        pygame.draw.rect(screen, PLAYER_COLOR, (px, py, 40, 40)) 
 
         # رسم الأعداء
         for enemy in engine.enemies:
