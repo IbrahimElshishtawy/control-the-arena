@@ -5,11 +5,11 @@ from config import settings
 
 class Enemy(pygame.sprite.Sprite):
     """
-    Simple patrolling enemy for Ashfall City.
-    Walks left/right along the road and damages the player on contact.
+    Simple patrolling enemy.
+    Now has health and can be killed by the player's melee attack.
     """
 
-    def __init__(self, x, y, patrol_width=160, speed=2):
+    def __init__(self, x, y, patrol_width=160, speed=2, max_health=60):
         super().__init__()
 
         self.width = 32
@@ -23,8 +23,29 @@ class Enemy(pygame.sprite.Sprite):
         self.start_x = x
         self.direction = 1  # 1 → right, -1 → left
 
+        # Health
+        self.max_health = max_health
+        self.health = max_health
+
+        # Hit feedback
+        self.last_hit_time = 0
+        self.hit_flash_duration_ms = 120
+
         self._draw_enemy()
 
+    # ------------- Health -------------
+    def is_alive(self) -> bool:
+        return self.health > 0
+
+    def take_damage(self, amount: int):
+        if amount <= 0:
+            return
+        self.health = max(0, self.health - amount)
+        self.last_hit_time = pygame.time.get_ticks()
+        if self.health <= 0:
+            self.kill()
+
+    # ------------- Visuals -------------
     def _draw_enemy(self):
         """Draw simple hostile robot / soldier style."""
         surf = self.image
@@ -54,6 +75,7 @@ class Enemy(pygame.sprite.Sprite):
         pygame.draw.rect(surf, (120, 40, 50), left_leg, border_radius=4)
         pygame.draw.rect(surf, (120, 40, 50), right_leg, border_radius=4)
 
+    # ------------- Update -------------
     def update(self):
         # Patrol horizontally around start_x
         self.rect.x += self.speed * self.direction
@@ -67,3 +89,14 @@ class Enemy(pygame.sprite.Sprite):
 
         # Keep inside screen vertically just in case
         self.rect.clamp_ip(pygame.Rect(0, 0, settings.WIDTH, settings.HEIGHT))
+
+        # Hit flash (اختياري لو حابب تبين إنه اتضرب)
+        now = pygame.time.get_ticks()
+        if now - self.last_hit_time <= self.hit_flash_duration_ms:
+            # overlay بسيط أحمر
+            flash = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+            flash.fill((255, 120, 120, 120))
+            self.image.blit(flash, (0, 0))
+        else:
+            # إعادة الرسم الطبيعي لتفادي تراكم الفلاش
+            self._draw_enemy()
