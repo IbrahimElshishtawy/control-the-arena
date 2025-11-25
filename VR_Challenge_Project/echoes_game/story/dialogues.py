@@ -64,3 +64,33 @@ RIFT_REVEAL_ECHO = [
     "Ryn: So I'm not just remembering the past. I'm competing with other versions of myself.",
     "Lira: And only one of you gets to decide what the final reality looks like.",
 ]
+# -------------------------
+# CHAPTER 4: Keepers Hidden Facility
+# -------------------------
+KEEPERS_INTRO_DIALOGUE = [
+    "Lira: This is it. One of the last hidden facilities the Keepers still control.",
+    "Ryn: Doesn't look like much from the outside.",
+    "Lira: That's the point. After the Core collapse, anything obvious was wiped or taken.",
+    "Ryn: You said your contact was here.",
+    "Lira: Commander Hale. He knows more about the Core project and about you than anyone else still alive.",
+    "Ryn: That supposed to make me feel better?",
+    "Lira: Depends on how much truth you’re ready to handle.",
+]
+
+KEEPERS_MEETING_DIALOGUE = [
+    "Hale: So… the famous Ryn Carter finally walks into my facility.",
+    "Ryn: We've met before?",
+    "Hale: Many times. The issue is: only one of you remembers those meetings.",
+    "Ryn: One of me?",
+    "Hale: The Core didn't just copy timelines, it copied you. Fragments of you have been working against each other for months.",
+    "Lira: Hale, we don't have time for philosophy. We need a plan before Seraph reaches the backup Core.",
+    "Hale: Then the plan starts here: Ryn needs to choose which version of himself this reality will listen to.",
+]
+
+KEEPERS_SECRET_ECHO = [
+    "[Memory Echo] (Past Lira): If this works, he won't remember me like this.",
+    "[Memory Echo] (Hale): But you'll remember every branch he walks through. That’s a heavy burden.",
+    "[Memory Echo] (Past Lira): Someone has to carry the real timeline. Let him believe he's just trying to fix a broken world.",
+    "Ryn: So you were guiding me… but not telling me everything.",
+    "Lira: I was trying to give you a choice without breaking you first.",
+]
