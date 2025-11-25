@@ -121,7 +121,7 @@ class AscendantSpireScene(Scene):
         self.all_sprites.update(keys)
         self.enemies.update()
 
-        # Enemy damage (لا ضرر أثناء الـ Dash)
+        # Enemy damage (no damage during Dash)
         if self.player.is_alive():
             hits = pygame.sprite.spritecollide(self.player, self.enemies, False)
             if hits and not self.player.is_dashing:
@@ -150,8 +150,8 @@ class AscendantSpireScene(Scene):
             self.echo_done = True
             self.echo_dialogue = DialogueBox(ASCENDANT_SERAPH_ECHO)
 
-        # Gate to Core Chamber – حالياً متاح طول الوقت لما اللاعب يقرب
-        if self.player.rect.colliderect(self.core_gate_rect):
+        # Gate to Core Chamber – لا يُفعّل إلا بعد الـ Echo
+        if self.echo_done and self.player.rect.colliderect(self.core_gate_rect):
             self.core_gate_active = True
         else:
             self.core_gate_active = False
@@ -247,6 +247,40 @@ class AscendantSpireScene(Scene):
                 self.echo_rect.centery + 22,
             )
 
+    def _draw_attack_effect(self, surface):
+        """Visual glow showing where the melee swing is hitting."""
+        if not hasattr(self.player, "is_attacking"):
+            return
+        if not self.player.is_attacking():
+            return
+
+        attack_rect = self.player.get_attack_rect()
+        if not attack_rect:
+            return
+
+        glow_w = attack_rect.width + 24
+        glow_h = attack_rect.height + 24
+        glow_surf = pygame.Surface((glow_w, glow_h), pygame.SRCALPHA)
+
+        r, g, b = settings.COLOR_HIGHLIGHT
+        base_alpha = 90
+
+        pygame.draw.rect(
+            glow_surf,
+            (r, g, b, base_alpha),
+            glow_surf.get_rect(),
+            border_radius=10,
+        )
+        pygame.draw.rect(
+            glow_surf,
+            (r, g, b, 180),
+            glow_surf.get_rect().inflate(-6, -6),
+            2,
+            border_radius=10,
+        )
+
+        surface.blit(glow_surf, (attack_rect.x - 12, attack_rect.y - 12))
+
     def _draw_health_bar(self, surface, x, y, width, height, value, max_value):
         ratio = max(0, min(1, value / max_value if max_value > 0 else 0))
         bg_rect = pygame.Rect(x, y, width, height)
@@ -308,7 +342,7 @@ class AscendantSpireScene(Scene):
         )
         ui.draw_text(
             surface,
-            "Objective: Survive the ascent and reach the Core interface at the top.",
+            "Objective: Survive the ascent, sync Seraph's Echo, then reach the Core interface.",
             14,
             color,
             20,
@@ -323,6 +357,16 @@ class AscendantSpireScene(Scene):
             20,
             92,
         )
+
+        if self.core_gate_active:
+            ui.draw_text(
+                surface,
+                "Press [F] to enter the Core Chamber.",
+                13,
+                (210, 230, 255),
+                20,
+                114,
+            )
 
         self._draw_health_bar(
             surface,
@@ -343,6 +387,9 @@ class AscendantSpireScene(Scene):
 
         self.all_sprites.draw(surface)
         self.enemies.draw(surface)
+
+        # Attack glow effect
+        self._draw_attack_effect(surface)
 
         self._draw_hud(surface)
         self._draw_death_overlay(surface)
