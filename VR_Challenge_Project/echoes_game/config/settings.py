@@ -1,0 +1,18 @@
+# config/settings.py
+
+WIDTH = 960
+HEIGHT = 540
+FPS = 60
+TITLE = "Echoes of the Last Core - Prototype"
+
+# ألوان عامة
+COLOR_BG = (5, 7, 17)
+COLOR_TEXT = (230, 230, 240)
+COLOR_HIGHLIGHT = (120, 200, 255)
+COLOR_PLAYER = (80, 200, 120)
+COLOR_ECHO = (200, 120, 255)
+COLOR_PANEL = (15, 20, 40)
+
+COLOR_LAB_BG = (15, 18, 35)
+COLOR_LAB_BORDER = (40, 60, 90)
+COLOR_DOOR = (80, 80, 120)
