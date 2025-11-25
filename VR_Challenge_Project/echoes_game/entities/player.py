@@ -16,14 +16,34 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=(x, y))
 
         # Movement
-        self.speed = 4
+        self.base_speed = 4
+        self.speed = self.base_speed
         self.facing = "down"
+
+        # Dash system
+        self.is_dashing = False
+        self.dash_speed_multiplier = 2.4
+        self.dash_duration_ms = 220
+        self.dash_cooldown_ms = 600
+        self.dash_start_time = 0
+        self.last_dash_time = -9999
 
         # Health system
         self.max_health = 100
         self.health = self.max_health
         self.last_hit_time = 0
         self.hit_cooldown_ms = 800  # ms between hits
+
+        # Attack system (melee)
+        self.attacking = False
+        self.attack_damage = 25
+        self.attack_range = 32       # المسافة قدام اللاعب
+        self.attack_width = 26       # عرض الضربة
+        self.attack_duration_ms = 180
+        self.attack_cooldown_ms = 260
+        self.last_attack_time = -9999
+        self.attack_start_time = 0
+        self._attack_already_hit = False  # علشان ما يضربش نفس العدو مليون مرة في نفس السوينج
 
         # Draw initial idle sprite
         self._draw_idle()
@@ -44,6 +64,91 @@ class Player(pygame.sprite.Sprite):
 
         self.last_hit_time = now
         self.health = max(0, self.health - amount)
+
+    # ---------------- Attack helpers ----------------
+    def can_attack(self) -> bool:
+        now = pygame.time.get_ticks()
+        return (not self.attacking) and (now - self.last_attack_time >= self.attack_cooldown_ms)
+
+    def _start_attack(self):
+        """Internal: start a melee swing."""
+        now = pygame.time.get_ticks()
+        self.attacking = True
+        self.attack_start_time = now
+        self.last_attack_time = now
+        self._attack_already_hit = False
+
+    def is_attacking(self) -> bool:
+        """Used by scenes to check if a swing is active."""
+        return self.attacking
+
+    def can_hit_this_swing(self) -> bool:
+        """Used by scenes: هل لسه مسموح للسوينج الحالي يضرب حد؟"""
+        return self.attacking and not self._attack_already_hit
+
+    def register_attack_hit(self):
+        """Called by scenes لما ضربة واحدة تصيب عدو."""
+        self._attack_already_hit = True
+
+    def get_attack_rect(self):
+        """Return a rect representing melee hitbox in front of the player."""
+        if not self.attacking:
+            return None
+
+        # Base rect (player)
+        px, py, pw, ph = self.rect
+
+        if self.facing == "up":
+            return pygame.Rect(
+                px + (pw - self.attack_width) // 2,
+                py - self.attack_range,
+                self.attack_width,
+                self.attack_range,
+            )
+        elif self.facing == "down":
+            return pygame.Rect(
+                px + (pw - self.attack_width) // 2,
+                py + ph,
+                self.attack_width,
+                self.attack_range,
+            )
+        elif self.facing == "left":
+            return pygame.Rect(
+                px - self.attack_range,
+                py + (ph - self.attack_width) // 2,
+                self.attack_range,
+                self.attack_width,
+            )
+        else:  # "right"
+            return pygame.Rect(
+                px + pw,
+                py + (ph - self.attack_width) // 2,
+                self.attack_range,
+                self.attack_width,
+            )
+
+    # ---------------- Dash helpers ----------------
+    def can_dash(self) -> bool:
+        now = pygame.time.get_ticks()
+        return (not self.is_dashing) and (now - self.last_dash_time >= self.dash_cooldown_ms)
+
+    def _start_dash(self):
+        now = pygame.time.get_ticks()
+        self.is_dashing = True
+        self.dash_start_time = now
+        self.last_dash_time = now
+
+    def _update_dash_state(self):
+        if not self.is_dashing:
+            self.speed = self.base_speed
+            return
+
+        now = pygame.time.get_ticks()
+        if now - self.dash_start_time >= self.dash_duration_ms:
+            self.is_dashing = False
+            self.speed = self.base_speed
+        else:
+            self.speed = int(self.base_speed * self.dash_speed_multiplier)
 
     # ---------------- Drawing: 3D-style body ----------------
     def _draw_head(self, surf):
@@ -270,7 +375,7 @@ class Player(pygame.sprite.Sprite):
         self._draw_head(self.image)
 
     # ---------------- Movement / Update ----------------
-    def handle_input(self, keys):
+    def _handle_movement_input(self, keys):
         dx, dy = 0, 0
 
         if keys[pygame.K_w] or keys[pygame.K_UP]:
@@ -292,8 +397,34 @@ class Player(pygame.sprite.Sprite):
         # Clamp to screen
         self.rect.clamp_ip(pygame.Rect(0, 0, settings.WIDTH, settings.HEIGHT))
 
+    def _handle_attack_input(self, keys):
+        # Attack key: J
+        if keys[pygame.K_j] and self.can_attack():
+            self._start_attack()
+
+        # End attack after duration
+        if self.attacking:
+            now = pygame.time.get_ticks()
+            if now - self.attack_start_time >= self.attack_duration_ms:
+                self.attacking = False
+
+    def _handle_dash_input(self, keys):
+        # Dash key: K
+        if keys[pygame.K_k] and self.can_dash():
+            self._start_dash()
+
+        self._update_dash_state()
+
     def update(self, keys):
         if not self.is_alive():
             return
-        self.handle_input(keys)
-        # يمكن لاحقاً تحريك الـ sprite حسب facing أو health (فلاش مثلاً عند الإصابة)
+
+        # Dash affects speed
+        self._handle_dash_input(keys)
+
+        # Movement
+        self._handle_movement_input(keys)
+
+        # Attack
+        self._handle_attack_input(keys)
+        # ممكن لاحقاً نغير شكل الـ sprite وقت الهجوم / الداش
