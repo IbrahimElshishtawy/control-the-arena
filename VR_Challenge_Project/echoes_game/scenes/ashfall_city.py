@@ -57,8 +57,8 @@ class AshfallCityScene(Scene):
         """Create a couple of patrolling enemies on the road."""
         road_y = settings.HEIGHT // 2 + 80
 
-        e1 = Enemy(settings.WIDTH // 2 - 140, road_y, patrol_width=200, speed=2)
-        e2 = Enemy(settings.WIDTH // 2 + 80, road_y, patrol_width=180, speed=2)
+        e1 = Enemy(settings.WIDTH // 2 - 140, road_y, patrol_width=200, speed=2, max_health=60)
+        e2 = Enemy(settings.WIDTH // 2 + 80, road_y, patrol_width=180, speed=2, max_health=60)
 
         self.enemies.add(e1, e2)
 
@@ -117,11 +117,23 @@ class AshfallCityScene(Scene):
         self.all_sprites.update(keys)
         self.enemies.update()
 
-        # Enemy collisions (damage)
+        # Enemy collisions (damage to player)
         if self.player.is_alive():
             hits = pygame.sprite.spritecollide(self.player, self.enemies, False)
-            if hits:
+            if hits and not self.player.is_dashing:
+                # أثناء الـ Dash ما ناخدش Damage (إحساس بروفيشنال شويه)
                 self.player.take_damage(15)
+
+        # Player attack vs enemies
+        if self.player.is_attacking() and self.player.can_hit_this_swing():
+            attack_rect = self.player.get_attack_rect()
+            if attack_rect:
+                # أي عدو في الـ Hitbox يتضرب مرة واحدة في السوينج
+                for enemy in list(self.enemies):
+                    if enemy.rect.colliderect(attack_rect):
+                        enemy.take_damage(self.player.attack_damage)
+                        self.player.register_attack_hit()
+                        break  # تضرب أول واحد وتخرج، تقدر تغير ده لو عايز Multi-hit
 
         # Check death
         if not self.player.is_alive():
@@ -253,11 +265,20 @@ class AshfallCityScene(Scene):
         )
         ui.draw_text(
             surface,
-            "Objective: Avoid patrols and head towards the Rift Zone gate.",
+            "Objective: Avoid or fight patrols and head towards the Rift Zone gate.",
             14,
             color,
             20,
             70,
+        )
+
+        ui.draw_text(
+            surface,
+            "Combat: J = melee attack   ·   K = dash",
+            12,
+            (190, 200, 230),
+            20,
+            92,
         )
 
         if self.echo_active and not self.echo_collected and not (self.dialogue and self.dialogue.active):
@@ -267,7 +288,7 @@ class AshfallCityScene(Scene):
                 14,
                 settings.COLOR_HIGHLIGHT,
                 20,
-                92,
+                114,
             )
 
         if self.gate_active and not self.player_dead:
@@ -277,7 +298,7 @@ class AshfallCityScene(Scene):
                 14,
                 (200, 190, 255),
                 20,
-                112,
+                134,
             )
 
         # Health bar bottom-left
