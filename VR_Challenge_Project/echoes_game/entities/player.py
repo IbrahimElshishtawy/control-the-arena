@@ -7,51 +7,73 @@ class Player(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__()
 
-        # حجم الشخصية
+        # Size
         self.width = 40
         self.height = 64
 
-        # سطح مع شفافية
+        # Sprite surface with transparency
         self.image = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
         self.rect = self.image.get_rect(center=(x, y))
 
+        # Movement
         self.speed = 4
         self.facing = "down"
 
-        # رسم أولي
+        # Health system
+        self.max_health = 100
+        self.health = self.max_health
+        self.last_hit_time = 0
+        self.hit_cooldown_ms = 800  # ms between hits
+
+        # Draw initial idle sprite
         self._draw_idle()
 
-    # ---------------- رسم الرأس / الخوذة ----------------
+    # ---------------- Health ----------------
+    def is_alive(self) -> bool:
+        return self.health > 0
+
+    def take_damage(self, amount: int):
+        """Reduce health with a short invincibility window."""
+        if amount <= 0:
+            return
+
+        now = pygame.time.get_ticks()
+        if now - self.last_hit_time < self.hit_cooldown_ms:
+            # Still in invincibility window
+            return
+
+        self.last_hit_time = now
+        self.health = max(0, self.health - amount)
+
+    # ---------------- Drawing: 3D-style body ----------------
     def _draw_head(self, surf):
+        """Helmet / head with visor and highlights."""
         w, h = self.width, self.height
 
         head_radius = w // 4
         head_center = (w // 2, head_radius + 4)
 
-        # سطح منفصل للرأس لسهولة التحكم
         head_size = head_radius * 2 + 8
         head_surf = pygame.Surface((head_size, head_size), pygame.SRCALPHA)
         cx, cy = head_size // 2, head_size // 2
 
-        # خوذة أساسية
+        # Helmet base
         pygame.draw.circle(head_surf, settings.COLOR_PLAYER_SUIT, (cx, cy), head_radius)
         pygame.draw.circle(head_surf, settings.COLOR_PLAYER_OUTLINE, (cx, cy), head_radius, 2)
 
-        # visor (زجاج أمامي) بيضاوي
+        # Visor
         visor_w = int(head_radius * 1.5)
         visor_h = int(head_radius * 0.9)
         visor_rect = pygame.Rect(0, 0, visor_w, visor_h)
         visor_rect.center = (cx, cy + 2)
 
-        # طبقة مظلمة داخلية
         pygame.draw.ellipse(head_surf, settings.COLOR_PLAYER_VISOR_DARK, visor_rect)
 
-        # طبقة الزجاج الأساسية
         inner_visor = visor_rect.inflate(-4, -4)
         pygame.draw.ellipse(head_surf, settings.COLOR_PLAYER_VISOR, inner_visor)
         pygame.draw.ellipse(head_surf, settings.COLOR_PLAYER_OUTLINE, inner_visor, 2)
 
-        # ظل سفلي (يعطي عمق)
+        # Lower shadow
         shadow_rect = inner_visor.copy()
         shadow_rect.y += shadow_rect.height // 3
         shadow_rect.height //= 2
@@ -59,7 +81,7 @@ class Player(pygame.sprite.Sprite):
         pygame.draw.ellipse(shadow_surf, (0, 0, 0, 70), shadow_rect)
         head_surf.blit(shadow_surf, (0, 0))
 
-        # لمعة مائلة (هايلايت)
+        # Highlight stripe
         hl_rect = pygame.Rect(0, 0, visor_w // 2, visor_h // 3)
         hl_rect.center = (cx - visor_w // 4, cy - visor_h // 4)
         hl_surf = pygame.Surface((head_size, head_size), pygame.SRCALPHA)
@@ -67,7 +89,7 @@ class Player(pygame.sprite.Sprite):
         hl_surf.set_alpha(170)
         head_surf.blit(hl_surf, (0, 0))
 
-        # توهج خفيف في الأسفل
+        # Glow bottom
         glow_rect = pygame.Rect(0, 0, visor_w // 3, visor_h // 3)
         glow_rect.center = (cx + visor_w // 4, cy + visor_h // 6)
         glow_surf = pygame.Surface((head_size, head_size), pygame.SRCALPHA)
@@ -75,7 +97,7 @@ class Player(pygame.sprite.Sprite):
         glow_surf.set_alpha(80)
         head_surf.blit(glow_surf, (0, 0))
 
-        # “ذقن” أو فلتر
+        # Chin / filter
         chin_w = int(head_radius * 1.1)
         chin_h = head_radius // 3
         chin_rect = pygame.Rect(0, 0, chin_w, chin_h)
@@ -84,20 +106,12 @@ class Player(pygame.sprite.Sprite):
         inner_chin = chin_rect.inflate(-4, -4)
         pygame.draw.rect(head_surf, (20, 60, 50), inner_chin, border_radius=6)
 
-        # وضع الرأس على الـ surf الأساسي
         dest_x = head_center[0] - head_size // 2
         dest_y = head_center[1] - head_size // 2
         surf.blit(head_surf, (dest_x, dest_y))
 
-    # ---------------- جسم 3D-Style (Top / Front / Side) ----------------
     def _draw_body_3d(self, surf):
-        """
-        جسم بشكل بريسم شبه 3D (isometric-style):
-        - وجه علوي (TOP) لون فاتح
-        - وجه أمامي (FRONT) أغمق
-        - وجه جانبي (SIDE) متوسط
-        """
-
+        """Pseudo-3D body: top, front, side."""
         w, h = self.width, self.height
 
         head_radius = w // 4
@@ -109,10 +123,9 @@ class Player(pygame.sprite.Sprite):
         body_x = (w - body_width) // 2
         body_y = head_center_y + head_radius - 2
 
-        # offset عمق للـ 3D
         depth = 6
 
-        # نقاط الوجه العلوي (Top) كـ شكل مائل قليلاً
+        # Top face
         top_front_y = body_y
         top_back_y = body_y - depth
 
@@ -129,13 +142,8 @@ class Player(pygame.sprite.Sprite):
         pygame.draw.polygon(surf, settings.COLOR_PLAYER_SUIT_TOP, top_polygon)
         pygame.draw.polygon(surf, settings.COLOR_PLAYER_OUTLINE, top_polygon, 2)
 
-        # الوجه الأمامي (Front)
-        front_rect = pygame.Rect(
-            body_x,
-            body_y,
-            body_width,
-            body_height,
-        )
+        # Front face
+        front_rect = pygame.Rect(body_x, body_y, body_width, body_height)
         pygame.draw.rect(
             surf,
             settings.COLOR_PLAYER_SUIT_FRONT,
@@ -150,17 +158,17 @@ class Player(pygame.sprite.Sprite):
             border_radius=8,
         )
 
-        # الوجه الجانبي (Side) على اليمين
+        # Side face (right)
         side_polygon = [
-            (front_rect.right, front_rect.top),                # أعلى أمام يمين
-            (front_rect.right, front_rect.bottom),             # أسفل أمام يمين
-            (front_rect.right - depth, front_rect.bottom - depth),  # أسفل خلف يمين
-            (front_rect.right - depth, front_rect.top - depth),     # أعلى خلف يمين
+            (front_rect.right, front_rect.top),
+            (front_rect.right, front_rect.bottom),
+            (front_rect.right - depth, front_rect.bottom - depth),
+            (front_rect.right - depth, front_rect.top - depth),
         ]
         pygame.draw.polygon(surf, settings.COLOR_PLAYER_SUIT_SIDE, side_polygon)
         pygame.draw.polygon(surf, settings.COLOR_PLAYER_OUTLINE, side_polygon, 2)
 
-        # ظل بسيط في أسفل الجسم
+        # Bottom shadow
         bottom_shadow = pygame.Surface((w, h), pygame.SRCALPHA)
         shadow_rect = pygame.Rect(
             body_x,
@@ -171,7 +179,7 @@ class Player(pygame.sprite.Sprite):
         pygame.draw.rect(bottom_shadow, (0, 0, 0, 80), shadow_rect, border_radius=4)
         surf.blit(bottom_shadow, (0, 0))
 
-        # حزام
+        # Belt
         belt_h = 6
         belt_rect = pygame.Rect(
             body_x + 4,
@@ -181,7 +189,7 @@ class Player(pygame.sprite.Sprite):
         )
         pygame.draw.rect(surf, settings.COLOR_PLAYER_OUTLINE, belt_rect, border_radius=3)
 
-        # لمبة في منتصف الصدر
+        # Chest light
         chest_light = pygame.Rect(
             body_x + body_width // 2 - 4,
             body_y + 8,
@@ -190,15 +198,13 @@ class Player(pygame.sprite.Sprite):
         )
         pygame.draw.rect(surf, settings.COLOR_PLAYER_ACCENT, chest_light, border_radius=3)
 
-        # حفظ بعض الإحداثيات لاستخدامها في الأرجل
         return front_rect
 
     def _draw_limbs_3d(self, surf, front_rect):
-        """أذرع وأرجل متوافقة مع الجسم 3D-Style."""
-
+        """Arms and legs that match the 3D-style body."""
         w, h = self.width, self.height
 
-        # الأذرع
+        # Arms
         arm_width = int(w * 0.22)
         arm_height = int(front_rect.height * 0.7)
         arm_y = front_rect.y + 6
@@ -220,7 +226,14 @@ class Player(pygame.sprite.Sprite):
             pygame.draw.rect(surf, settings.COLOR_PLAYER_SUIT_FRONT, arm, border_radius=8)
             pygame.draw.rect(surf, settings.COLOR_PLAYER_OUTLINE, arm, 2, border_radius=8)
 
-        # أرجل
+        # Hands
+        hand_height = 6
+        left_hand = pygame.Rect(left_arm.x, left_arm.bottom - hand_height, arm_width, hand_height)
+        right_hand = pygame.Rect(right_arm.x, right_arm.bottom - hand_height, arm_width, hand_height)
+        for hand in (left_hand, right_hand):
+            pygame.draw.rect(surf, settings.COLOR_PLAYER_OUTLINE, hand, border_radius=4)
+
+        # Legs
         leg_width = front_rect.width // 3
         leg_height = h - (front_rect.bottom) - 4
         leg_y = front_rect.bottom
@@ -242,7 +255,7 @@ class Player(pygame.sprite.Sprite):
             pygame.draw.rect(surf, settings.COLOR_PLAYER_SUIT_FRONT, leg, border_radius=4)
             pygame.draw.rect(surf, settings.COLOR_PLAYER_OUTLINE, leg, 2, border_radius=4)
 
-        # أقدام أغمق
+        # Feet
         foot_h = 6
         left_foot = pygame.Rect(left_leg.x, left_leg.bottom - foot_h, leg_width, foot_h)
         right_foot = pygame.Rect(right_leg.x, right_leg.bottom - foot_h, leg_width, foot_h)
@@ -250,17 +263,13 @@ class Player(pygame.sprite.Sprite):
             pygame.draw.rect(surf, settings.COLOR_PLAYER_OUTLINE, foot, border_radius=4)
 
     def _draw_idle(self):
-        """إعادة رسم الشخصية في وضع الوقوف 3D-Style."""
+        """Redraw character in idle pose."""
         self.image.fill((0, 0, 0, 0))
-
-        # جسم 3D
         front_rect = self._draw_body_3d(self.image)
-        # أطراف
         self._draw_limbs_3d(self.image, front_rect)
-        # رأس
         self._draw_head(self.image)
 
-    # ---------------- الحركة والتحديث ----------------
+    # ---------------- Movement / Update ----------------
     def handle_input(self, keys):
         dx, dy = 0, 0
 
@@ -280,9 +289,11 @@ class Player(pygame.sprite.Sprite):
         self.rect.x += dx
         self.rect.y += dy
 
-        # حدود الشاشة
+        # Clamp to screen
         self.rect.clamp_ip(pygame.Rect(0, 0, settings.WIDTH, settings.HEIGHT))
 
     def update(self, keys):
+        if not self.is_alive():
+            return
         self.handle_input(keys)
-        # لاحقاً تقدر تضيف هنا تغييرات بسيطة في الرسم حسب facing للحركة
+        # يمكن لاحقاً تحريك الـ sprite حسب facing أو health (فلاش مثلاً عند الإصابة)
