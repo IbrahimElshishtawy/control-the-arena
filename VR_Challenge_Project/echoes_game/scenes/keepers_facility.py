@@ -44,6 +44,15 @@ class KeepersFacilityScene(Scene):
         self.secret_echo_active = False
         self.secret_echo_done = False
 
+        # Exit to Ascendant Spire (top center)
+        self.exit_rect = pygame.Rect(
+            settings.WIDTH // 2 - 40,
+            70,
+            80,
+            40,
+        )
+        self.exit_active = False
+
         # Dialogues
         self.intro_dialogue = DialogueBox(KEEPERS_INTRO_DIALOGUE)
         self.meeting_dialogue = None
@@ -91,6 +100,11 @@ class KeepersFacilityScene(Scene):
                     self.secret_echo_dialogue = DialogueBox(KEEPERS_SECRET_ECHO)
                     self.secret_echo_done = True
 
+                # Travel to Ascendant Spire (after meeting Hale)
+                if event.key == pygame.K_f and self.exit_active and self.meeting_done:
+                    from scenes.ascendant_spire import AscendantSpireScene
+                    self.game.change_scene(AscendantSpireScene(self.game))
+
     # -------------------------------------------------------------
     # Update
     # -------------------------------------------------------------
@@ -107,16 +121,13 @@ class KeepersFacilityScene(Scene):
         self.all_sprites.update(keys)
 
         # Check meeting area
-        if self.player.rect.colliderect(self.meeting_rect):
-            self.meeting_active = True
-        else:
-            self.meeting_active = False
+        self.meeting_active = self.player.rect.colliderect(self.meeting_rect)
 
         # Check secret echo terminal
-        if self.player.rect.colliderect(self.secret_echo_rect):
-            self.secret_echo_active = True
-        else:
-            self.secret_echo_active = False
+        self.secret_echo_active = self.player.rect.colliderect(self.secret_echo_rect)
+
+        # Check exit to spire (only meaningful after meeting Hale)
+        self.exit_active = self.player.rect.colliderect(self.exit_rect)
 
     # -------------------------------------------------------------
     # Drawing helpers
@@ -166,6 +177,19 @@ class KeepersFacilityScene(Scene):
             console_rect.y - 14,
         )
 
+        # Exit zone to Spire
+        exit_rect = self.exit_rect.inflate(40, 10)
+        pygame.draw.rect(surface, (22, 30, 50), exit_rect, border_radius=8)
+        pygame.draw.rect(surface, (200, 190, 255), exit_rect, 2, border_radius=8)
+        ui.draw_centered_text(
+            surface,
+            "TO ASCENDANT SPIRE",
+            11,
+            (210, 210, 250),
+            exit_rect.centerx,
+            exit_rect.y - 14,
+        )
+
     def _draw_interaction_highlights(self, surface):
         pulse = self._pulse(speed=3.0)
 
@@ -189,6 +213,16 @@ class KeepersFacilityScene(Scene):
             )
             surface.blit(halo_surface, (self.secret_echo_rect.x - 20, self.secret_echo_rect.y - 20))
 
+        # Exit halo (actively pulsing only after meeting)
+        if self.meeting_done:
+            halo_surface = pygame.Surface((self.exit_rect.width + 40, self.exit_rect.height + 40), pygame.SRCALPHA)
+            pygame.draw.ellipse(
+                halo_surface,
+                (180, 210, 255, int(60 + 50 * pulse)),
+                halo_surface.get_rect(),
+            )
+            surface.blit(halo_surface, (self.exit_rect.x - 20, self.exit_rect.y - 20))
+
     def _draw_hud(self, surface):
         ui.draw_text(surface, "Echoes of the Last Core // CH-04: KEEPERS FACILITY", 14, settings.COLOR_TEXT, 20, 10)
         ui.draw_text(surface, "Move: W / A / S / D or Arrow keys", 12, settings.COLOR_TEXT, 20, 32)
@@ -203,7 +237,7 @@ class KeepersFacilityScene(Scene):
 
         ui.draw_text(
             surface,
-            "Objective: Meet Commander Hale and uncover what the Keepers really know.",
+            "Objective: Meet Commander Hale, then head to the Ascendant Spire.",
             14,
             color,
             20,
@@ -228,6 +262,16 @@ class KeepersFacilityScene(Scene):
                 (220, 200, 255),
                 20,
                 114,
+            )
+
+        if self.exit_active and self.meeting_done:
+            ui.draw_text(
+                surface,
+                "Press [F] to travel to the Ascendant Spire.",
+                13,
+                (210, 230, 255),
+                20,
+                134,
             )
 
     # -------------------------------------------------------------
