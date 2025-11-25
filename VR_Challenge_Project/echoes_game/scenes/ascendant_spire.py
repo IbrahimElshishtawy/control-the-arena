@@ -62,8 +62,8 @@ class AscendantSpireScene(Scene):
         y1 = settings.HEIGHT // 2 + 40
         y2 = settings.HEIGHT // 2 - 10
 
-        e1 = Enemy(settings.WIDTH // 2 - 160, y1, patrol_width=220, speed=2)
-        e2 = Enemy(settings.WIDTH // 2 + 140, y2, patrol_width=200, speed=3)
+        e1 = Enemy(settings.WIDTH // 2 - 160, y1, patrol_width=220, speed=2, max_health=70)
+        e2 = Enemy(settings.WIDTH // 2 + 140, y2, patrol_width=200, speed=3, max_health=70)
 
         self.enemies.add(e1, e2)
 
@@ -121,11 +121,21 @@ class AscendantSpireScene(Scene):
         self.all_sprites.update(keys)
         self.enemies.update()
 
-        # Enemy damage
+        # Enemy damage (لا ضرر أثناء الـ Dash)
         if self.player.is_alive():
             hits = pygame.sprite.spritecollide(self.player, self.enemies, False)
-            if hits:
+            if hits and not self.player.is_dashing:
                 self.player.take_damage(15)
+
+        # Player attack vs enemies
+        if self.player.is_attacking() and self.player.can_hit_this_swing():
+            attack_rect = self.player.get_attack_rect()
+            if attack_rect:
+                for enemy in list(self.enemies):
+                    if enemy.rect.colliderect(attack_rect):
+                        enemy.take_damage(self.player.attack_damage)
+                        self.player.register_attack_hit()
+                        break
 
         if not self.player.is_alive():
             self.player_dead = True
@@ -140,7 +150,7 @@ class AscendantSpireScene(Scene):
             self.echo_done = True
             self.echo_dialogue = DialogueBox(ASCENDANT_SERAPH_ECHO)
 
-        # Gate to Core Chamber – يصبح فعالاً دائماً (يمكنك لاحقاً ربطه بالـ echo_done)
+        # Gate to Core Chamber – حالياً متاح طول الوقت لما اللاعب يقرب
         if self.player.rect.colliderect(self.core_gate_rect):
             self.core_gate_active = True
         else:
@@ -305,15 +315,14 @@ class AscendantSpireScene(Scene):
             70,
         )
 
-        if self.core_gate_active:
-            ui.draw_text(
-                surface,
-                "Press [F] to enter the Core Chamber.",
-                13,
-                (210, 230, 255),
-                20,
-                92,
-            )
+        ui.draw_text(
+            surface,
+            "Combat: J = melee attack   ·   K = dash",
+            12,
+            (190, 200, 230),
+            20,
+            92,
+        )
 
         self._draw_health_bar(
             surface,
